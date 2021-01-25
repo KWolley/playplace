@@ -19,8 +19,8 @@ int connectToCloud(int timeoutSec);
 #line 8 "c:/Users/karaw/Documents/aquarealtime/resdev/software/playplace/src/playplace.ino"
 SYSTEM_MODE(MANUAL);  
 
-#define CELL_CONNECT_SECONDS 90 // time to attempt to connect to cellular
-#define CLOUD_CONNECT_SECONDS 60 // time to attempt to connect cloud
+#define CELL_CONNECT_SECONDS 20 // time to attempt to connect to cellular
+#define CLOUD_CONNECT_SECONDS 20 // time to attempt to connect cloud
 #define CLOUD_WAIT 30
 
 // setup() runs once, when the device is first turned on.
@@ -32,6 +32,7 @@ void setup() {
 // loop() runs over and over again, as quickly as it can execute.
 void loop() {
   delay(1000);
+  Serial.print("==== LOOP ====");
   int cellConnectTime = connectToCell(CELL_CONNECT_SECONDS);
   if (cellConnectTime > 0)
   {
@@ -73,13 +74,16 @@ int connectToCell(int timeoutSec)
   int secondCounter = 0;
   Serial.printf("Connecting to cellular ... ");
   Cellular.on();
+  Serial.printf("Cell On");
   Cellular.connect();
+  Serial.printf("  - Cell Connect");
   while (Cellular.ready() == false)
   {
     secondCounter ++;
+    Serial.printlnf("%i",secondCounter);
     if (secondCounter >= timeoutSec)
     {
-      Serial.printlnf("Couldn't connect to cellular.");
+      Serial.printlnf("FAILED.  Couldn't connect to cellular.");
       Cellular.off();
       return 0;
       break;
