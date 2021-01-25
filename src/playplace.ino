@@ -11,63 +11,109 @@ SYSTEM_MODE(MANUAL);
 #define CLOUD_CONNECT_SECONDS 20 // time to attempt to connect cloud
 #define CLOUD_WAIT 30
 
+uint sleepTime = 15; // time in minutes to sleep
+
 unsigned long connectMillis = CELL_CONNECT_SECONDS * 1000;
+int failures = 0;
 
 // setup() runs once, when the device is first turned on.
 void setup() {
   Serial.begin(9600);
+  delay(2000);
 }
 
 // loop() runs over and over again, as quickly as it can execute.
 void loop() {
-  delay(1000);
-  Serial.println("==== LOOP ====");
+  delay(2000);
+  Serial.println("\n\n==== LOOP ====");
+  Serial.printlnf("Cellular = %d. Cloud = %d.",(int)Cellular.ready(), (int)Particle.connected());
   unsigned long startTime = millis();
+  connectOption(1,startTime);
+  // testCellandPublish();
+
+  deepSleep(60*sleepTime);
+}
+
+int connectOption(int num, uint startTime)
+{
   Particle.connect();
-  if (waitFor(Particle.connected, connectMillis))
+  // Option #1 
+  if (num == 1)
   {
-    Serial.printlnf("time to connect %lu", millis()-startTime);
+    // Cellular.on();
+    // Cellular.connect();
+    // Particle.connect();
+    Serial.println("start while");
     Serial.printlnf("Cellular = %d. Cloud = %d.",(int)Cellular.ready(), (int)Particle.connected());
-    delay(5000);
-    Serial.printlnf("wait 5 Cellular = %d. Cloud = %d.",(int)Cellular.ready(), (int)Particle.connected());
+    while (Particle.connected() == false)
+    {
+      if (millis() - startTime > connectMillis)
+      {
+        Serial.println("did not connect");
+        Serial.printlnf("Cellular = %d. Cloud = %d.",(int)Cellular.ready(), (int)Particle.connected());
+        failures++;
+        break;
+      }
+    }
     if (Particle.connected())
     {
-      Serial.println("turn everything off");
+      Serial.println("chill for 20s");
+      delay(20000);
+      Serial.println("NOW turn everything off");
       Particle.disconnect();
       Cellular.disconnect();
       Cellular.off();
       Serial.printlnf("Cellular = %d. Cloud = %d.",(int)Cellular.ready(), (int)Particle.connected());
       Particle.process();
     }
+    else
+    {
+      Serial.println("Connection Failed");
+      diconnectAll();
+    }
+    
   }
-  else
+  else if (num == 2)
   {
-    Serial.println("did not connect");
+    //option #2
+    
+    // Cellular.connect();
+    Serial.println("start wait for");
     Serial.printlnf("Cellular = %d. Cloud = %d.",(int)Cellular.ready(), (int)Particle.connected());
+    if (waitFor(Particle.connected, connectMillis))
+    {
+      Serial.printlnf("time to connect %lu", millis()-startTime);
+      Serial.printlnf("Cellular = %d. Cloud = %d.",(int)Cellular.ready(), (int)Particle.connected());
+      if (Particle.connected())
+      {
+        Serial.println("chill for 20s");
+        delay(20000);
+        Serial.println("NOW turn everything off");
+        diconnectAll();
+      }
+    }
+    else
+    {
+      Serial.println("did not connect");
+      Serial.printlnf("Cellular = %d. Cloud = %d.",(int)Cellular.ready(), (int)Particle.connected());
+      failures++;
+    }
   }
-  
-  
-  
-  
-  
-  // int cellConnectTime = connectToCell(CELL_CONNECT_SECONDS);
-  // if (cellConnectTime > 0)
-  // {
-  //   int cloudConnectTime = connectToCloud(CLOUD_CONNECT_SECONDS);
-  //   if (cloudConnectTime > 0)
-  //   {
-  //     String outDat = "cell: " + (String) cellConnectTime + ",  cloud: " + (String) cloudConnectTime;
-  //     Particle.publish("connectTime",outDat,PRIVATE);
-  //     delay(1000);
-  //     Particle.disconnect();
-  //     Cellular.disconnect();
-  //     Cellular.off();
-  //   }
-  // }
-
-  deepSleep(60*5);
+  Serial.printlnf("total time: %lu", millis()-startTime);
+  // Serial.printlnf("Current time = " + Time.format(Time.now(), "%Y-%m-%d %H:%M:%S"));
+  Serial.printlnf("Failures = %i",failures);
+  return 1;
 }
 
+int diconnectAll()
+{
+  Particle.disconnect();
+  Cellular.disconnect();
+  Cellular.off();
+  Serial.printlnf("Cellular = %d. Cloud = %d.",(int)Cellular.ready(), (int)Particle.connected());
+  Particle.process();
+  return 1;
+}
 // Sleep ULP way
 int deepSleep(int seconds)
 {
@@ -149,4 +195,24 @@ int connectToCloud(int timeoutSec)
   }
   Serial.printlnf("OK.");
   return secondCounter;
+}
+
+// log time to connect to cellular and cloud and publish to cloud if success
+int testCellandPublish()
+{
+  int cellConnectTime = connectToCell(CELL_CONNECT_SECONDS);
+  if (cellConnectTime > 0)
+  {
+    int cloudConnectTime = connectToCloud(CLOUD_CONNECT_SECONDS);
+    if (cloudConnectTime > 0)
+    {
+      String outDat = "cell: " + (String) cellConnectTime + ",  cloud: " + (String) cloudConnectTime;
+      Particle.publish("connectTime",outDat,PRIVATE);
+      delay(2000);
+      Particle.disconnect();
+      Cellular.disconnect();
+      Cellular.off();
+    }
+  }
+  return 1;
 }
