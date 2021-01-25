@@ -13,42 +13,88 @@
 
 void setup();
 void loop();
+int deepSleep(int seconds);
 int ULPSleep(int seconds);
 int connectToCell(int timeoutSec);
 int connectToCloud(int timeoutSec);
 #line 8 "c:/Users/karaw/Documents/aquarealtime/resdev/software/playplace/src/playplace.ino"
 SYSTEM_MODE(MANUAL);  
 
-#define CELL_CONNECT_SECONDS 20 // time to attempt to connect to cellular
+#define CELL_CONNECT_SECONDS 60 // time to attempt to connect to cellular
 #define CLOUD_CONNECT_SECONDS 20 // time to attempt to connect cloud
 #define CLOUD_WAIT 30
+
+unsigned long connectMillis = CELL_CONNECT_SECONDS * 1000;
 
 // setup() runs once, when the device is first turned on.
 void setup() {
   Serial.begin(9600);
-
 }
 
 // loop() runs over and over again, as quickly as it can execute.
 void loop() {
   delay(1000);
-  Serial.print("==== LOOP ====");
-  int cellConnectTime = connectToCell(CELL_CONNECT_SECONDS);
-  if (cellConnectTime > 0)
+  Serial.println("==== LOOP ====");
+  unsigned long startTime = millis();
+  Particle.connect();
+  if (waitFor(Particle.connected, connectMillis))
   {
-    int cloudConnectTime = connectToCloud(CLOUD_CONNECT_SECONDS);
-    if (cloudConnectTime > 0)
+    Serial.printlnf("time to connect %lu", millis()-startTime);
+    Serial.printlnf("Cellular = %d. Cloud = %d.",(int)Cellular.ready(), (int)Particle.connected());
+    delay(5000);
+    Serial.printlnf("wait 5 Cellular = %d. Cloud = %d.",(int)Cellular.ready(), (int)Particle.connected());
+    if (Particle.connected())
     {
-      String outDat = "cell: " + (String) cellConnectTime + ",  cloud: " + (String) cloudConnectTime;
-      Particle.publish("connectTime",outDat,PRIVATE);
-      delay(1000);
+      Serial.println("turn everything off");
       Particle.disconnect();
       Cellular.disconnect();
       Cellular.off();
+      Serial.printlnf("Cellular = %d. Cloud = %d.",(int)Cellular.ready(), (int)Particle.connected());
+      Particle.process();
     }
   }
+  else
+  {
+    Serial.println("did not connect");
+    Serial.printlnf("Cellular = %d. Cloud = %d.",(int)Cellular.ready(), (int)Particle.connected());
+  }
+  
+  
+  
+  
+  
+  // int cellConnectTime = connectToCell(CELL_CONNECT_SECONDS);
+  // if (cellConnectTime > 0)
+  // {
+  //   int cloudConnectTime = connectToCloud(CLOUD_CONNECT_SECONDS);
+  //   if (cloudConnectTime > 0)
+  //   {
+  //     String outDat = "cell: " + (String) cellConnectTime + ",  cloud: " + (String) cloudConnectTime;
+  //     Particle.publish("connectTime",outDat,PRIVATE);
+  //     delay(1000);
+  //     Particle.disconnect();
+  //     Cellular.disconnect();
+  //     Cellular.off();
+  //   }
+  // }
 
-  ULPSleep(60);
+  deepSleep(60*5);
+}
+
+// Sleep ULP way
+int deepSleep(int seconds)
+{
+  if (seconds <= 0)
+  {
+    seconds = 10;
+    Serial.printlnf("Zero sleep time, adjusting to 10 seconds sleep time.");
+  }
+  Serial.printlnf("Going to sleep for %d minutes %d seconds.", seconds / 60, seconds % 60);
+  SystemSleepConfiguration config;
+  config.mode(SystemSleepMode::HIBERNATE)
+        .duration(seconds * 1000);  // Takes msec
+  System.sleep(config);
+  return 1;
 }
 
 // Sleep ULP way
