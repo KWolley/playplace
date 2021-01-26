@@ -11,9 +11,11 @@ void loop();
 SYSTEM_MODE(SEMI_AUTOMATIC);
 SYSTEM_THREAD(ENABLED);
 
-SerialLogHandler logHandler(LOG_LEVEL_TRACE);
+SerialLogHandler logHandler(LOG_LEVEL_INFO);
 #define CELL_CONNECT_SECONDS 60 // time to attempt to connect to cellular
 unsigned long connectMillis = CELL_CONNECT_SECONDS * 1000;
+int sleepMe = 5;
+uint sleepMillis = sleepMe*60*1000; 
 int failures = 0;
 
 // setup() runs once, when the device is first turned on.
@@ -27,18 +29,22 @@ void loop()
 {
   delay(2000);
   Log.info("\n\n==== LOOP ====");
-  Log.info("Cellular = %d.Cloud = %d.", (int)Cellular.ready(), (int)Particle.connected());
+  Log.info("Cellular = %d.  Cloud = %d.", (int)Cellular.ready(), (int)Particle.connected());
   unsigned long startTime = millis();
   Particle.connect();
+  
   if (waitFor(Particle.connected, connectMillis))
   {
     if (Particle.connected())
     {
+      Log.info("time to connect: %lu", millis() - startTime);
+      Log.info("Chill for 20");
       delay(20000);
     }
   }
   else
   {
+    Log.info("FAILED");
     failures++;
   }
   Log.info("total time: %lu, failures: %d", millis() - startTime, failures);
@@ -46,11 +52,11 @@ void loop()
   Cellular.disconnect();
   Cellular.off();
 
-
+  Log.info("go to sleep");
   SystemSleepConfiguration config;
-  config.mode(SystemSleepMode::HIBERNATE)
-      .duration(900000); // 15min
-  System.sleep(config);
+    config.mode(SystemSleepMode::HIBERNATE)
+        .duration(sleepMillis); 
+    System.sleep(config);
 }
 
 
